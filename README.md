@@ -10,7 +10,7 @@
 ### 运行
 
 ```bash
-docker run -id -p 8066:8066 --name mt-photos-deepface -e TZ=Asia/Shanghai -e API_AUTH_KEY=mt_photos_ai_extra mt-photos-deepface:latest
+docker run -id -p 8066:8066 --restart=unless-stopped --name mt-photos-deepface -e TZ=Asia/Shanghai -e API_AUTH_KEY=mt_photos_ai_extra gavingooo/mt-photos-deepface-noavx:latest
 ```
 
 ### 查看日志
