@@ -1,6 +1,28 @@
-# MT Photos人脸识别API
+# MT Photos人脸识别API - noavx
 
 - 基于[serengil/deepface](https://github.com/serengil/deepface)实现的人脸识别API
+- 基于[原仓库](https://github.com/MT-Photos/mt-photos-deepface)实现支持无avx指令集的CPU运行，禁用了重启
+
+
+
+## Docker一把梭
+
+### 运行
+
+```bash
+docker run -id -p 8066:8066 --name mt-photos-deepface -e TZ=Asia/Shanghai -e API_AUTH_KEY=mt_photos_ai_extra mt-photos-deepface:latest
+```
+
+### 查看日志
+
+```bash
+# 显示最新100行
+docker logs -t -n 100 mt-photos-deepface
+```
+
+
+
+## 以下是原内容
 
 ## 模型选择
 

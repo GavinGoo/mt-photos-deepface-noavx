@@ -9,7 +9,7 @@ import asyncio
 from deepface import DeepFace
 from PIL import Image
 from io import BytesIO
-from tensorflow.keras import utils
+
 
 on_linux = sys.platform.startswith('linux')
 
@@ -22,7 +22,7 @@ http_port = int(os.getenv("HTTP_PORT", "8066"))
 inactive_task = None
 
 
-# 人脸检测模型
+# Face Detection Model
 backends = [
     'opencv',
     'ssd',
@@ -38,7 +38,7 @@ backends = [
 detector_backend = os.getenv("DETECTOR_BACKEND", "retinaface")
 
 
-# 人脸特征提取模型
+# Face Feature Extraction Model
 models = [
     "VGG-Face",
     "Facenet",
@@ -71,14 +71,13 @@ async def check_activity(request, call_next):
 
 
 async def verify_header(api_key: str = Header(...)):
-    # 在这里编写验证逻辑，例如检查 api_key 是否有效
     if api_key != api_auth_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return api_key
 
 @app.get("/")
 async def top_info():
-    return {"title": "mt-photos 人脸识别", "link": "https://mtmt.tech/docs/advanced/facial_api"}
+    return {"title": "mt-photos 人脸识别-支持无avx指令集的CPU", "link": "https://github.com/GavinGoo/mt-photos-deepface-noavx"}
 
 
 @app.post("/check")
@@ -88,7 +87,7 @@ async def check_req(api_key: str = Depends(verify_header)):
 
 @app.post("/restart")
 async def check_req(api_key: str = Depends(verify_header)):
-    # 客户端可调用，触发重启进程来释放内存
+    print('HTTP: GO Restart!')
     restart_program()
 
 
@@ -107,13 +106,17 @@ async def process_image(file: UploadFile = File(...), api_key: str = Depends(ver
                 frame = img.convert('RGB')  # Convert to RGB mode
                 np_arr = np.array(frame)  # Convert to NumPy array
                 img = cv2.cvtColor(np_arr, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
+
         if img is None:
             # Use OpenCV for other image types
             np_arr = np.frombuffer(image_bytes, np.uint8)
             img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        # After switched to imdecode, Secondary Check
         if img is None:
             err = f"The uploaded file {file.filename} is not a valid image format or is corrupted."
             print(err)
+
             return {'result': [], 'msg': str(err)}
 
         height, width, _ = img.shape
@@ -122,34 +125,41 @@ async def process_image(file: UploadFile = File(...), api_key: str = Depends(ver
 
         data = {"detector_backend": detector_backend, "recognition_model": recognition_model}
         embedding_objs = await predict(_represent, img)
+
         # embedding_objs = DeepFace.represent(
         #     img_path=img,
         #     detector_backend=detector_backend,
         #     model_name=recognition_model,
-        #     enforce_detection=True,  # 强制检测，如果为true会报错, 设置为False时可以针对整张照片进行特征识别
+        #     enforce_detection=True,  # Forced detection, if true will report an error, set to False can be used for the whole photo features recognition.
         #     align=True,
         # )
-        #enforce_detection=True 时，未识别到人脸的错误信息
+
+        ## When enforce_detection=True, the error message that was not recognized
+        #enforce_detection=True
         #1
         # Face could not be detected in numpy array.Please confirm that the picture is a face photo or consider to set enforce_detection param to False.
         #2
         # Exception while extracting faces from numpy array.Consider to set enforce_detection arg to False.
+
         del img
         data["result"] = embedding_objs
+
         return data
+    
     except Exception as e:
         if 'set enforce_detection' in str(e):
             return {'result': []}
         print(e)
+
         return {'result': [], 'msg': str(e)}
 
 def _represent(img):
-    utils.disable_interactive_logging()
+    # enforce_detection=True,  # Forced detection, if true will report an error, set to False can be used for the whole photo features recognition.
     return DeepFace.represent(
         img_path=img,
         detector_backend=detector_backend,
         model_name=recognition_model,
-        enforce_detection=True,  # 强制检测，如果为true会报错, 设置为False时可以针对整张照片进行特征识别
+        enforce_detection=True,
         align=True,
     )
 
@@ -157,8 +167,11 @@ async def predict(predict_func, img):
     return await asyncio.get_running_loop().run_in_executor(None, predict_func, img)
 
 def restart_program():
-    python = sys.executable
-    os.execl(python, python, *sys.argv)
+    ## Dont restart
+    print('Restarting...')
+
+    # python = sys.executable
+    # os.execl(python, python, *sys.argv)
 
 
 if __name__ == "__main__":
